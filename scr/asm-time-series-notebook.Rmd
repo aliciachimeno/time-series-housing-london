@@ -1,6 +1,149 @@
 ---
-title: "asm-time-series"
+title: "London housing price forecast"
 output: html_document
 date: "2024-12-15"
 ---
+## Introduction
+Houses are highly valuable assets 
+###  Data 
+The UK House Price Index (UK HPI) captures changes in the value of residential properties. The UK HPI uses sales data collected on residential housing transactions, whether for cash or with a mortgage. Properties have been included:
+- in England and Wales since January 1995
+- in Scotland since January 2004.
+- in Northern Ireland since January 2005.
+Data is available at a national and regional level, as well as counties, local authorities and London boroughs.
+For more information on the data set, visit "https://www.gov.uk/government/publications/about-the-uk-house-price-index/about-the-uk-house-price-index#data-tables?utm_medium=GOV.UK&utm_source=datadownload&utm_campaign=data_tables&utm_term=9.30_21_03_17" and for the data source "https://data.london.gov.uk/dataset/uk-house-price-index". 
+
+In our use-case, we used only the information about LONDON. 
+
+### Motivation
+One of us wants to move to London in the near-future and wants to calculate how much should save to in 5-6 years to buy a house there. 
+
+## Identification
+### Data 
+Load the data:
+```{r}
+source("validation.R")
+```
+
+```{r,WARNINGS=F}
+library(readxl)
+avg_price <- read_excel("/Users/ali/Documents/GitHub/asm-time-series-arimax/data/UK-house-price-index.xlsx", sheet = 3)
+```
+Select London data
+```{r}
+# select data
+london_price<-avg_price[2:dim(avg_price)[1],c("...1","LONDON")]
+# transform  into numerical data
+london_price$LONDON <- as.numeric(london_price$LONDON)
+london_price$LONDON <- round(london_price$LONDON, 2)
+# series
+serie <- ts(london_price$LONDON, start = c(1995, 1), freq = 12)
+#print(serie)
+
+```
+
+```{r}
+plot(serie,main="London housing prices")
+abline(v=1995:2024,col=4,lty=3)
+```
+
+We shall diagnose if the series is stationary. And if it is not, try to transform the series into a stationary one. 
+### Is the variance constant?
+To diagnose the non-constant variance, we will check first the boxplot for periods
+```{r}
+groupedserie <- matrix(serie[1:(24*12)],ncol=24)
+boxplot(groupedserie)
+```
+Here we can observe that the variance is not similar for all groups. Therefore we shall consider transforming the scale. 
+We can also see the mean-variance plot: 
+```{r}
+m<-apply(groupedserie,2,mean)
+v<-apply(groupedserie,2,var)
+plot(v~m,xlab="Mean",ylab="Variance")
+abline(lm(v~m),col=2,lty=3)
+text(m,v,1995:2024)
+```
+We can see that for higher values of the mean we have higher values of the variance. This is not strictly true for all years. But we shall try if a change of scale is appropriate. For exaple applying logarithm.
+
+```{r}
+lnserie=log(serie)
+plot(lnserie)
+```
+And check the same plots wheather it improved or not. 
+
+```{r}
+# boxplot
+groupedserie <- matrix(lnserie[1:(24*12)],ncol=24)
+boxplot(groupedserie)
+# mean/ var plot
+m<-apply(groupedserie,2,mean)
+v<-apply(groupedserie,2,var)
+plot(v~m,xlab="Mean",ylab="Variance")
+abline(lm(v~m),col=2,lty=3)
+text(m,v,1995:2024)
+```
+
+### Is there a Seasonal Pattern?
+
+```{r}
+monthplot(lnserie)
+```
+There is no variations across the months, therefore seems to not have a seasonal pattern. 
+```{r}
+ts.plot(matrix(lnserie,nrow=12),col=1:8)
+```
+Does not seem to have seasonal patterns. 
+
+### Is the mean constant? 
+There is kind of an almost-linear trend. We have to apply one regular difference trying to make the mean constant:
+```{r}
+d1lnserie=diff(lnserie)
+plot(d1lnserie)
+abline(h=0)
+abline(h=mean(d1lnserie),col=2)
+```
+The mean from the `lnserie` is seemingly constant, but different from zero. 
+```{r}
+mean(lnserie)
+```
+And the mean from `d1lnserie` is
+
+```{r}
+mean(d1lnserie)
+```
+
+We shall check for over-differentiation: Take an extra differentiation and compare the variances.
+```{r}
+d1d1lnserie=diff(d1lnserie)
+plot(d1d1lnserie)
+abline(h=0)
+abline(h=mean(d1d1lnserie),col=2)
+```
+
+```{r}
+var(lnserie)
+var(d1lnserie)
+var(d1d1lnserie)
+
+mean(lnserie)
+mean(d1lnserie)
+mean(d1d1lnserie)
+```
+The variance increase when we take an extra regular difference. Therefore we do not need an extra differentiation. 
+
+### Is the current series already stationary?
+Plot the ACF and decide wheather it is stationary. 
+```{r}
+par(mar = c(5, 4, 4, 2))
+acf(d1lnserie,ylim=c(-1,1),lag.max=60,col=c(2,rep(1,3)), main ="ACF(serie)")
+```
+
+```{r}
+pacf(d1lnserie,ylim=c(-1,1),col=c(rep(1,11),2),lwd=2,lag.max=72,main ="PACF(serie)")
+```
+Final transformation for the London housing series: $W_t=(1-B)$
+
+```{r}
+(mod1=arima(d1lnserie,order=c(0,1,1),seasonal=list(order=c(2,1,0),period=12)))
+```
 
