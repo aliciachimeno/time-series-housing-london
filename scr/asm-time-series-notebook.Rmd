@@ -6,59 +6,58 @@ date: "2024-12-15"
 
 ## Data 
 
-Load the data:
-```{r}
-source("validation.R")
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo=TRUE, warning=FALSE, message=FALSE)
 ```
 
-```{r,WARNINGS=F}
+```{r}
 library(readxl)
 avg_price <- read_excel("/Users/ali/Documents/GitHub/asm-time-series-arimax/data/UK-house-price-index.xlsx", sheet = 3)
 ```
 
-## 0) Pre-processing
 ```{r}
-# select data
-london_price<-avg_price[2:dim(avg_price)[1],c("...1","LONDON")]
-# transform  into numerical data
-london_price$LONDON <- as.numeric(london_price$LONDON)
-london_price$LONDON <- round(london_price$LONDON, 2)
-
+source("validation.R")
 ```
 
-## 1) Identification
+## 0. Pre-processing
+```{r}
+london_price<-avg_price[2:dim(avg_price)[1],c("...1","LONDON")] # select data
+london_price$LONDON <- as.numeric(london_price$LONDON) # transform  into numerical data
+```
+
+## 1. Identification
 
 ### a) Determine the needed transformations to make the series stationary. Justify the transformations carried out using graphical and numerical results.
 
 ```{r}
 serie <- ts(london_price$LONDON, start = c(1995, 1), freq = 12)
-#print(serie)
 plot(serie,main="London housing prices")
 abline(v=1995:2024,col=4,lty=3)
 ```
 
 We shall diagnose if the series is stationary. And if it is not, try to transform the series into a stationary one. 
+
 #### Is the variance constant?
 To diagnose the non-constant variance, we will check 2 plots: 
+
 - Boxplot 
 ```{r}
 boxplot(serie~floor(time(serie)), xlab='time (years)')
 ```
-- Mean/Var plot
 
+ - Mean/Var plot
 ```{r,warning=F}
 mserie <- matrix(serie, ncol = 12, byrow = TRUE) 
-
 m <-apply(mserie, 2, mean) # mean of each column (year)
 v <-apply(mserie, 2, var) 
 plot(v ~ m, xlab='mean', ylab='variance')
 abline(lm(v ~ m), col=2, lty=3)
 text(m,v,1995:2024)
-
 ```
-The first plot we can observe that the variance is not consistent for all years. There are bigger and smaller boxes during the years. In the second plot, we can see that for higher values of the mean we have higher values of the variance. Therefore we shall consider transforming the scale. We can check by the BoxCox method if the logarithm would be a good option. 
 
+The first plot we can observe that the variance is not consistent for all years. There are bigger and smaller boxes during the years. In the second plot, we can see that for higher values of the mean we have higher values of the variance. Therefore we shall consider transforming the scale. We can check by the BoxCox method if the logarithm would be a good option. 
 ```{r}
+library(forecast)
 BoxCox.lambda(serie+1)
 ```
 We have that lambda is close to 0, therefore a logarithmic transformation seems reasonable. 
@@ -68,7 +67,6 @@ plot(lnserie)
 ```
 
 And check the same plots whether it improved or not. 
-
 ```{r, warning=F}
 #boxplot
 boxplot(lnserie~floor(time(lnserie)), xlab='time (years)')
@@ -81,12 +79,12 @@ plot(v ~ m, xlab='mean', ylab='variance')
 abline(lm(v ~ m), col=2, lty=3)
 text(m,v,1995:2024)
 ```
+
 ```{r}
-# comparison boxplot
+# comparison boxplot between series
 par(mfrow=c(1,2))
 boxplot(serie~floor(time(lnserie)), xlab='time (years)') 
 boxplot(lnserie~floor(time(lnserie)), xlab='time (years)')
-
 ```
 
 #### Is there a Seasonal Pattern?
@@ -94,10 +92,12 @@ boxplot(lnserie~floor(time(lnserie)), xlab='time (years)')
 ```{r}
 monthplot(lnserie)
 ```
+
 There is no variations across the months, therefore seems to not have a seasonal pattern. 
 ```{r}
 ts.plot(matrix(lnserie,nrow=12),col=1:8)
 ```
+
 Does not seem to have seasonal patterns. 
 
 #### Is the mean constant? 
@@ -108,6 +108,7 @@ plot(d1lnserie)
 abline(h=0)
 abline(h=mean(d1lnserie),col=2)
 ```
+
 The mean from the `lnserie` is seemingly constant, but different from zero. 
 ```{r}
 mean(lnserie)
@@ -137,36 +138,94 @@ mean(d1d1lnserie)
 ```
 Although the mean is closer to 0, the variance increase when we take an extra regular difference. Therefore we do not need an extra differentiation. 
 
+Final transformation for the London housing series: $W_t=(1-B)log(serie)$ 
+
 ### b) Analyze the ACF and PACFof the stationary series to identify at least two plausible models. Reason about what features of the correlograms you use to identify these models.
 
 
-We will observe the plot of the ACF and decide wheather it is stationary. 
-The first `lnserie` is clearly non-stationary:
-```{r}
-acf(lnserie,ylim=c(-1,1),lag.max=60,col=c(2,rep(1,3)), main ="ACF(serie)")
-```
-The `d1lnserie` acf is the following:
+The `d1lnserie` ACF is the following:
 
 ```{r}
-acf(d1lnserie,ylim=c(-1,1),lag.max=60,col=c(2,rep(1,3)), main ="ACF(serie)")
+acf(d1lnserie,ylim=c(-1,1),lag.max=12*5,lwd=2,col=c(2,rep(1,3)), main ="ACF(serie)")
 ```
 
+The ACF appears to tail off slowly, rather than cutting off abruptly at one lag, which might indicate that the series has autoregressive (AR) behavior. We can see decreasing patterns (infinity lags not null). 
 
-The ACF decays fast towards zero and thus the dependence structure depends only on the lag. Thus, the `d1lnserie` ,  (1-B)log(serie), time series is very likely to be stationary. 
+
+And the PACF is the following: 
 ```{r}
-pacf(d1lnserie,ylim=c(-1,1),col=c(rep(1,11),2),lwd=2,lag.max=72,main ="PACF(serie)")
+pacf(d1lnserie,ylim=c(-1,1),col=c(rep(1,11),2),lwd=2,lag.max=12*6,main ="PACF(serie)")
 ```
-Final transformation for the London housing series: $W_t=(1-B)log(serie)$
+From the PACF, we observe that 
 
+we observe a significant last lag after which subsequent lags are nearly zero. This suggests that an AR(p) model may be appropriate. 
 
+Proposed models: 
 
-## Estimation
+- ARIMA(1,1,0)
+- ARIMA(0,1,1) 
+- ARIMA(1,1,1)
+- ARIMA(2,1,0)
+
+## 2. Estimation
+
+With the plot we observed some characteristics of the time series, but we will check wich is the best model numerically by trying to optimize the metrics: AIC (minimize), loglike () and BIC. 
+
+Manually we can see that 
+```{r}
+arima(d1lnserie, order = c(0, 1, 1)) 
+arima(d1lnserie, order = c(0,1,1))
+arima(d1lnserie, order = c(1,0,1))
+arima(d1lnserie, order = c(1,1,1))
+```
+the best one is p=q=1 and d=0. 
+
+We will create a function that selects the best arima model varying the p ,d and q values. 
+
 
 ```{r}
-(mod1=arima(d1lnserie,order=c(0,1,1),seasonal=list(order=c(2,1,0),period=12)))
+
+library(forecast)
+library(parallel)
+library(doParallel)
+
+find_best_arima <- function(time_series, max_p = 8, max_q = 8, max_d = 1) {
+  cl <- makeCluster(detectCores() - 1)
+  registerDoParallel(cl)
+  
+  best_aic <- Inf
+  best_order <- c(NA, NA, NA)
+  best_model <- NULL
+  results <- foreach(p = 0:max_p, .combine = rbind, .packages = 'forecast') %:%
+            foreach(d = 0:max_d, .combine = rbind) %:%
+            foreach(q = 0:max_q, .combine = rbind) %dopar% {
+              try({
+                model <- arima(time_series, order = c(p, d, q))
+                c(aic = model$aic, p = p, d = d, q = q)
+              }, silent = TRUE)
+            }
+  stopCluster(cl)
+  best_result <- results[which.min(results[, 1]), ]
+  best_aic <- best_result[1]
+  best_order <- best_result[2:4]
+  return(list(best_order = best_order, best_aic = best_aic))
+}
+
+# Use the function to find the best model
+result <- find_best_arima(d1lnserie)
+
+# View the best model parameters
+result$best_order
+result$best_aic
+
+best_model <- arima(d1lnserie, order = c(5,0,8))
+best_model
 ```
 
+
+
+
 ```{r}
-validation(mod1)
+validation(best_model)
 ```
 
