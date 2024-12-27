@@ -198,22 +198,20 @@ Residual Analysis: The residuals do not seem to be autocorrelated, they seem to 
 QQ-plot: Data seems to be normal distributed because almost all the data follow the line.
 
 ##### Model 2. ARIMA(1,1)
-Residual Analysis: The residuals do not seem to be autocorrelated, they seem to behave like white noise, therefore the model captures the structure of the data adequately. 
-QQ-plot: Data seems to be normal distributed because almost all the data follow the line.
+**Residual Analysis**: The residuals do not seem to be autocorrelated, they seem to behave like white noise, therefore the model captures the structure of the data adequately. 
+**QQ-plot**: Data seems to be normal distributed because almost all the data follow the line.
 
 
 ### b) Include analysis of the expressions of the AR and MA infinite models, discuss if they are causal and/or invertible and report some adequacy measures.
 
 ##### Model 1. AR(1)
-The model is :
+**Causality and inveritbility**: The model is causal.
 - causal: because the inverse roots of AR lay inside the circle.
 - invertible: cannot apply because does not have an MA component. 
 
 
 ##### Model 2. ARIMA(1,1)
-The model is 
-- causal because the inverse roots of AR lay inside the circle.
-- inverible because the inverse roots of MA lay inside the circle.
+**Causality and inveritbility**: The model is both causal and invertible. Causal because the inverse roots of AR lay inside the circle. Invertible because the inverse roots of MA lay inside the circle.
 
 
 ### c) Check the stability of the proposed models and evaluate their capability of prediction, reserving the last 12 observations. 
@@ -221,3 +219,37 @@ The model is
 ### d) Select the best model for forecasting. 
 
 We have seen that the model with the best AIC, loglike and BIC is ... Model. But to compare we will use RME, RSM forcasting error 
+
+```{r}
+train_data <- lnserie[1:(length(lnserie) - 12)]
+test_data <- lnserie[(length(lnserie) - 11):length(lnserie)]
+
+##arima(train). necessitem fer arima train and arima test ------ 
+forecast_values <- forecast(model1, h = 12)
+plot(forecast_values, main = "ARIMA Forecast vs Actual", col = "blue")
+lines(test_data, col = "red")
+accuracy(forecast_values, test_data)
+
+```
+
+```{r}
+forecast_values <- forecast(model2, h = 12)
+plot(forecast_values, main = "ARIMA Forecast vs Actual", col = "blue")
+lines(test_data, col = "red")
+accuracy(forecast_values, test_data)
+```
+
+
+## 4. Predictions
+
+### a) Obtain long term forecasts for the twelve months following the last observation available; provide also confidence intervals. 
+
+We will use all the data on the model to predict the next following 12 months. 
+
+```{r}
+forecast_result <- forecast(fit, h = 12)
+print(forecast_result)
+#plot(predicted, xlim=c(2010,2021), xlab='Years')
+```
+
+

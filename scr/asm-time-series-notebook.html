@@ -780,8 +780,8 @@ Arima(lnserie, order = c(1,1,1)) # ARIMA(1,1)</code></pre>
 <h3>a) Perform the complete analysis of residuals, justifying all
 assumptions made. Use the corresponding tests and graphical
 results.</h3>
-<div id="model-1.-ma1" class="section level5">
-<h5>Model 1. MA(1)</h5>
+<div id="model-1.-ar1" class="section level5">
+<h5>Model 1. AR(1)</h5>
 <p>Residual Analysis: The residuals do not seem to be autocorrelated,
 they seem to behave like white noise, therefore the model captures the
 structure of the data adequately. Seems to be 1 outlier bigger than in
@@ -790,25 +790,29 @@ the data follow the line.</p>
 </div>
 <div id="model-2.-arima11" class="section level5">
 <h5>Model 2. ARIMA(1,1)</h5>
-<p>Residual Analysis: The residuals do not seem to be autocorrelated,
-they seem to behave like white noise, therefore the model captures the
-structure of the data adequately. QQ-plot: Data seems to be normal
-distributed because almost all the data follow the line.</p>
+<p><strong>Residual Analysis</strong>: The residuals do not seem to be
+autocorrelated, they seem to behave like white noise, therefore the
+model captures the structure of the data adequately.
+<strong>QQ-plot</strong>: Data seems to be normal distributed because
+almost all the data follow the line.</p>
 </div>
 </div>
 <div id="b-include-analysis-of-the-expressions-of-the-ar-and-ma-infinite-models-discuss-if-they-are-causal-andor-invertible-and-report-some-adequacy-measures." class="section level3">
 <h3>b) Include analysis of the expressions of the AR and MA infinite
 models, discuss if they are causal and/or invertible and report some
 adequacy measures.</h3>
-<div id="model-1.-ma1-1" class="section level5">
-<h5>Model 1. MA(1)</h5>
-<p>The model is : - causal: because the inverse roots of AR lay inside
-the circle. - invertible:</p>
+<div id="model-1.-ar1-1" class="section level5">
+<h5>Model 1. AR(1)</h5>
+<p><strong>Causality and inveritbility</strong>: The model is causal. -
+causal: because the inverse roots of AR lay inside the circle. -
+invertible: cannot apply because does not have an MA component.</p>
 </div>
 <div id="model-2.-arima11-1" class="section level5">
 <h5>Model 2. ARIMA(1,1)</h5>
-<p>The model is - causal because the inverse roots of AR lay inside the
-circle. - inverible</p>
+<p><strong>Causality and inveritbility</strong>: The model is both
+causal and invertible. Causal because the inverse roots of AR lay inside
+the circle. Invertible because the inverse roots of MA lay inside the
+circle.</p>
 </div>
 </div>
 <div id="c-check-the-stability-of-the-proposed-models-and-evaluate-their-capability-of-prediction-reserving-the-last-12-observations." class="section level3">
@@ -819,6 +823,13 @@ capability of prediction, reserving the last 12 observations.</h3>
 <h3>d) Select the best model for forecasting.</h3>
 <p>We have seen that the model with the best AIC, loglike and BIC is …
 Model. But to compare we will use RME, RSM forcasting error</p>
+</div>
+</div>
+<div id="predictions" class="section level2">
+<h2>4. Predictions</h2>
+<div id="a-obtain-long-term-forecasts-for-the-twelve-months-following-the-last-observation-available-provide-also-confidence-intervals." class="section level3">
+<h3>a) Obtain long term forecasts for the twelve months following the
+last observation available; provide also confidence intervals.</h3>
 </div>
 </div>
 
