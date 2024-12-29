@@ -1,5 +1,6 @@
 ---
 title: "London housing price forecast"
+author: "Alícia Chimeno and Silvia Ferrer
 output: html_document
 date: "2024-12-15"
 ---
@@ -99,22 +100,31 @@ There is no variations across the months, therefore seems to not have a seasonal
 ts.plot(matrix(lnserie,nrow=12),col=1:8)
 ```
 
-Does not seem to have seasonal patterns. 
+Does not seem to have seasonal monthly patterns. 
+We will plot the decomposition of additive time series to see more insights.
+
+```{r}
+decomposed <- decompose(lnserie)
+plot(decomposed)
+```
+We can see that there is a seasonal patter, later on we will explore more. 
 
 #### Is the mean constant? 
 There is kind of an almost-linear trend. We will apply one regular difference trying to make the mean constant:
 ```{r}
 d1lnserie=diff(lnserie)
 plot(d1lnserie)
-abline(h=0)
+#abline(h=mean(lnserie))
 abline(h=mean(d1lnserie),col=2)
+
 ```
 
-The mean from the `lnserie` is seemingly constant, but different from zero. 
+
+The mean from the `lnserie` is not constant.
 ```{r}
 mean(lnserie)
 ```
-And the mean from `d1lnserie` is closer to 0:
+And the mean from `d1lnserie` is close to 0:
 
 ```{r}
 mean(d1lnserie)
@@ -147,8 +157,12 @@ Final transformation for the London housing series: $W_t=(1-B)log(serie)$
 The `d1lnserie` ACF is the following:
 
 ```{r}
-acf(d1lnserie,ylim=c(-1,1),lag.max=12*5,lwd=2,col=c(2,rep(1,3)), main ="ACF(serie)")
+acf(d1lnserie,ylim=c(-1,1),lag.max=12*5,lwd=2,col=c(2,rep(1,11)), main ="ACF(d1d1lnserie)")
+acf(d1lnserie,ylim=c(-1,1),lag.max=12*25,lwd=2,col=c(2,rep(1,11)), main ="ACF(d1lnserie)")
+
 ```
+The ACF plot shows a clear spike at lag 12, but more precisely if you see a recurring cycle every 12 months, we likely have a yearly seasonality in the data.
+
 
 The ACF appears to tail off slowly, rather than cutting off abruptly at one lag, which might indicate that the series has autoregressive (AR) behavior. We can see decreasing patterns (infinity lags not null). 
 In this context, makes sense that the price of the house deppends on the past price. 
@@ -156,18 +170,15 @@ In this context, makes sense that the price of the house deppends on the past pr
 
 And the PACF is the following: 
 ```{r}
-pacf(d1lnserie,ylim=c(-1,1),col=c(rep(1,11),2),lwd=2,lag.max=12*6,main ="PACF(serie)")
+pacf(d1lnserie,ylim=c(-1,1),col=c(rep(1,11),2),lwd=2,lag.max=12*5,main ="PACF(d1lnserie)")
+pacf(d1lnserie,ylim=c(-1,1),col=c(rep(1,11),2),lwd=2,lag.max=12*25,main ="PACF(d1lnserie)")
+
 ```
 
-From the PACF, we observe that 
 
-we observe 
-Proposed models: 
-
-- ARIMA(0,1,1) - AR(1) of the differentiation of the serie. 
-- ARIMA(1,1,1) - ARIMA ARMA model of the diff serie. 
-
-We suspected that our model has to have a AR component by the plots, therefore the series ARIMA(1,1,0) - MA(1) would not be considered. 
+MODELS
+- ARIMA(1,1,0)(1,0,1)[12] 
+- ARIMA(1,1,1)(1,0,1)[12] 
 
 ## 2. Estimation
 
@@ -175,14 +186,16 @@ We suspected that our model has to have a AR component by the plots, therefore t
 With the plot we observed some characteristics of the time series, but we will check wich is the best model numerically by trying to optimize the metrics: AIC (minimize), loglike (maximize) and BIC (minimize). 
 
 Manually we can see that 
-```{r}
-Arima(lnserie, order = c(1, 1, 0))  # AR(1)
-model1<-arima(lnserie, order = c(1, 1, 0))  # AR(1)
 
-Arima(lnserie, order = c(1,1,1)) # ARIMA(1,1)
-model2<-arima(lnserie, order = c(1,1,1))
+```{r}
+model1 <- arima(lnserie, order = c(1, 1, 0), seasonal = list(order = c(1, 0, 1), period = 12))
+summary(model1)
+
+model2 <- arima(lnserie, order = c(1, 1, 1), seasonal = list(order = c(1, 0, 1), period = 12))
+summary(model2)
+
 ```
-the best one is p=q=1 and d=1. 
+
 
 ## 3. Validation
 
@@ -194,10 +207,21 @@ validation(model2)
 ### a) Perform the complete analysis of residuals, justifying all assumptions made. Use the corresponding tests and graphical results. 
 
 ##### Model 1. AR(1)
-Residual Analysis: The residuals do not seem to be autocorrelated, they seem to behave like white noise, therefore the model captures the structure of the data adequately. Seems to be 1 outlier bigger than in model 2. 
-QQ-plot: Data seems to be normal distributed because almost all the data follow the line.
+
+- **Normality tests**: Shapiro-Wilk Test, Anderson-Darling Test, Jarque-Bera Test. All tests have p-values > 0.05, indicating that the residuals are approximately normally distributed.
+
+- **Residual Plots**: The residuals do not seem to be autocorrelated, they seem to behave like white noise, therefore the model captures the structure of the data adequately.
+
+- **QQ-plot**: Data seems to be normal distributed because almost all the data follow the line.  
+
+- **Breusch-Pagan test** checks for heteroskedasticity (non-constant variance of residuals). The p-value (1) is much greater than 0.05, so we fail to reject the null hypothesis. This indicates no significant evidence of heteroskedasticity in the residuals. Residual variance is constant.
+
+- **Durbin-Watson Test** checks for autocorrelation in residuals. The DW statistic of ~2 is close to the ideal value for no autocorrelation, and the p-value (1) is much greater than 0.05. This suggests no evidence of significant autocorrelation in the residuals.
+
+**Ljung-Box Test** At all tested lags (1, 2, and 3), the Ljung-Box test shows very small p-values (much less than 0.05). This indicates strong evidence of autocorrelation in the residuals. 
 
 ##### Model 2. ARIMA(1,1)
+
 **Residual Analysis**: The residuals do not seem to be autocorrelated, they seem to behave like white noise, therefore the model captures the structure of the data adequately. 
 **QQ-plot**: Data seems to be normal distributed because almost all the data follow the line.
 
@@ -205,14 +229,12 @@ QQ-plot: Data seems to be normal distributed because almost all the data follow 
 ### b) Include analysis of the expressions of the AR and MA infinite models, discuss if they are causal and/or invertible and report some adequacy measures.
 
 ##### Model 1. AR(1)
-**Causality and inveritbility**: The model is causal.
-- causal: because the inverse roots of AR lay inside the circle.
-- invertible: cannot apply because does not have an MA component. 
+**Causality and inveritbility**: The model is causal. Causal because the inverse roots of AR lay inside the circle. It is not invertible because does not have an MA component. 
 
 
 ##### Model 2. ARIMA(1,1)
 **Causality and inveritbility**: The model is both causal and invertible. Causal because the inverse roots of AR lay inside the circle. Invertible because the inverse roots of MA lay inside the circle.
-
+**Adequacy measures**:
 
 ### c) Check the stability of the proposed models and evaluate their capability of prediction, reserving the last 12 observations. 
 
@@ -246,10 +268,5 @@ accuracy(forecast_values, test_data)
 
 We will use all the data on the model to predict the next following 12 months. 
 
-```{r}
-forecast_result <- forecast(fit, h = 12)
-print(forecast_result)
-#plot(predicted, xlim=c(2010,2021), xlab='Years')
-```
 
 
