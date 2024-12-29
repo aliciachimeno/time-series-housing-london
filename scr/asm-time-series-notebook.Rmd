@@ -104,7 +104,7 @@ Does not seem to have seasonal monthly patterns.
 We will plot the decomposition of additive time series to see more insights.
 
 ```{r}
-decomposed <- decompose(lnserie)
+decomposed <- decompose(lnserie,type = "additive")
 plot(decomposed)
 ```
 We can see that there is a seasonal patter, later on we will explore more. 
@@ -179,13 +179,14 @@ pacf(d1lnserie,ylim=c(-1,1),col=c(rep(1,11),2),lwd=2,lag.max=12*25,main ="PACF(d
 MODELS
 - ARIMA(1,1,0)(1,0,1)[12] 
 - ARIMA(1,1,1)(1,0,1)[12] 
+- 
 
 ## 2. Estimation
 
 ### a) Use R to estimate the identified models.
-With the plot we observed some characteristics of the time series, but we will check wich is the best model numerically by trying to optimize the metrics: AIC (minimize), loglike (maximize) and BIC (minimize). 
+With the plot we observed some characteristics of the time series, but we will check which is the best model numerically by trying to optimize the metrics: AIC (minimize), loglike (maximize) and BIC (minimize). 
 
-Manually we can see that 
+Manually we can see that :
 
 ```{r}
 model1 <- arima(lnserie, order = c(1, 1, 0), seasonal = list(order = c(1, 0, 1), period = 12))
@@ -194,6 +195,10 @@ summary(model1)
 model2 <- arima(lnserie, order = c(1, 1, 1), seasonal = list(order = c(1, 0, 1), period = 12))
 summary(model2)
 
+model3 <- arima(lnserie, order = c(2,2, 1), seasonal = list(order = c(1, 0, 1), period = 12))
+summary(model3)
+
+Arima(lnserie, order = c(2,2, 1), seasonal = list(order = c(1, 0, 1), period = 12))
 ```
 
 
@@ -202,39 +207,27 @@ summary(model2)
 ```{r}
 validation(model1)
 validation(model2)
+validation(model3)
 ```
 
 ### a) Perform the complete analysis of residuals, justifying all assumptions made. Use the corresponding tests and graphical results. 
 
-##### Model 1. AR(1)
-
-- **Normality tests**: Shapiro-Wilk Test, Anderson-Darling Test, Jarque-Bera Test. All tests have p-values > 0.05, indicating that the residuals are approximately normally distributed.
-
-- **Residual Plots**: The residuals do not seem to be autocorrelated, they seem to behave like white noise, therefore the model captures the structure of the data adequately.
-
-- **QQ-plot**: Data seems to be normal distributed because almost all the data follow the line.  
-
-- **Breusch-Pagan test** checks for heteroskedasticity (non-constant variance of residuals). The p-value (1) is much greater than 0.05, so we fail to reject the null hypothesis. This indicates no significant evidence of heteroskedasticity in the residuals. Residual variance is constant.
-
-- **Durbin-Watson Test** checks for autocorrelation in residuals. The DW statistic of ~2 is close to the ideal value for no autocorrelation, and the p-value (1) is much greater than 0.05. This suggests no evidence of significant autocorrelation in the residuals.
-
-**Ljung-Box Test** At all tested lags (1, 2, and 3), the Ljung-Box test shows very small p-values (much less than 0.05). This indicates strong evidence of autocorrelation in the residuals. 
-
-##### Model 2. ARIMA(1,1)
-
-**Residual Analysis**: The residuals do not seem to be autocorrelated, they seem to behave like white noise, therefore the model captures the structure of the data adequately. 
-**QQ-plot**: Data seems to be normal distributed because almost all the data follow the line.
-
 
 ### b) Include analysis of the expressions of the AR and MA infinite models, discuss if they are causal and/or invertible and report some adequacy measures.
 
-##### Model 1. AR(1)
-**Causality and inveritbility**: The model is causal. Causal because the inverse roots of AR lay inside the circle. It is not invertible because does not have an MA component. 
-
-
-##### Model 2. ARIMA(1,1)
-**Causality and inveritbility**: The model is both causal and invertible. Causal because the inverse roots of AR lay inside the circle. Invertible because the inverse roots of MA lay inside the circle.
+##### Model 1.
+**Expressions analysis**:
+**Causality and inveritbility**: The model is both causal and invertible. This can be confirmed analytically by observing that the modulus of the AR  characteristic polynomial roots and the modulus of the MA characteristic polynomial roots are greater than 1. Additionally, the model is graphically confirmed as causal and invertible, since the inverse roots of both the AR and MA polynomials lie inside the unit circle.
 **Adequacy measures**:
+
+##### Model 2. 
+**Causality and inveritbility**: The model is both causal and invertible. Same reason as for model 1. 
+
+**Adequacy measures**:
+
+##### Model 3: 
+**Causality and inveritbility**: The model is both causal and invertible. Same reason as for model 1. 
+
 
 ### c) Check the stability of the proposed models and evaluate their capability of prediction, reserving the last 12 observations. 
 
