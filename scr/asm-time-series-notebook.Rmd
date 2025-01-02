@@ -218,12 +218,9 @@ validation(model3)
 ##### Model 1.
 **Expressions analysis**:
 **Causality and inveritbility**: The model is both causal and invertible. This can be confirmed analytically by observing that the modulus of the AR  characteristic polynomial roots and the modulus of the MA characteristic polynomial roots are greater than 1. Additionally, the model is graphically confirmed as causal and invertible, since the inverse roots of both the AR and MA polynomials lie inside the unit circle.
-**Adequacy measures**:
 
 ##### Model 2. 
 **Causality and inveritbility**: The model is both causal and invertible. Same reason as for model 1. 
-
-**Adequacy measures**:
 
 ##### Model 3: 
 **Causality and inveritbility**: The model is both causal and invertible. Same reason as for model 1. 
@@ -231,27 +228,32 @@ validation(model3)
 
 ### c) Check the stability of the proposed models and evaluate their capability of prediction, reserving the last 12 observations. 
 
-### d) Select the best model for forecasting. 
-
 We have seen that the model with the best AIC, loglike and BIC is ... Model. But to compare we will use RME, RSM forcasting error 
 
 ```{r}
+## split train
 train_data <- lnserie[1:(length(lnserie) - 12)]
 test_data <- lnserie[(length(lnserie) - 11):length(lnserie)]
+## model 1
+model1 <- arima(train_data, order = c(1, 1, 0), seasonal = list(order = c(1, 0, 1), period = 12))
+model2 <- arima(train_data, order = c(1, 1, 1), seasonal = list(order = c(1, 0, 1), period = 12))
+model3 <- arima(train_data, order = c(2,2, 1), seasonal = list(order = c(1, 0, 1), period = 12))
 
-##arima(train). necessitem fer arima train and arima test ------ 
-forecast_values <- forecast(model1, h = 12)
-plot(forecast_values, main = "ARIMA Forecast vs Actual", col = "blue")
-lines(test_data, col = "red")
-accuracy(forecast_values, test_data)
+forecast_values1 <- forecast(model1, h = 12)
+forecast_values2 <- forecast(model2, h = 12)
+forecast_values3 <- forecast(model3, h = 12)
+
+accuracy(forecast_values1, test_data)
+accuracy(forecast_values2, test_data)
+accuracy(forecast_values3, test_data)
 
 ```
 
+### d) Select the best model for forecasting. 
+
 ```{r}
-forecast_values <- forecast(model2, h = 12)
-plot(forecast_values, main = "ARIMA Forecast vs Actual", col = "blue")
-lines(test_data, col = "red")
-accuracy(forecast_values, test_data)
+model2 <- arima(lnserie, order = c(1, 1, 1), seasonal = list(order = c(1, 0, 1), period = 12))
+best_model<-model2
 ```
 
 
@@ -259,7 +261,38 @@ accuracy(forecast_values, test_data)
 
 ### a) Obtain long term forecasts for the twelve months following the last observation available; provide also confidence intervals. 
 
-We will use all the data on the model to predict the next following 12 months. 
 
 
+```{r}
+forecast_results <- forecast(best_model, h = 12)
+plot(forecast_results)
+print(forecast_results)
+```
+
+```{r}
+historical_data <- window(lnserie, start = time(lnserie)[length(time(lnserie)) - (5 * 12) + 1])
+
+# Apply the exponential transformation to revert to the original scale
+forecast_df <- data.frame(
+  Time = c(time(historical_data), time(forecast_results$mean)),
+  Value = c(exp(as.numeric(historical_data)), exp(as.numeric(forecast_results$mean))),
+  Type = c(rep("Historical", length(historical_data)), rep("Forecast", length(forecast_results$mean))),
+  Lower95 = c(rep(NA, length(historical_data)), exp(as.numeric(forecast_results$lower[, 2]))),
+  Upper95 = c(rep(NA, length(historical_data)), exp(as.numeric(forecast_results$upper[, 2])))
+)
+
+ggplot(forecast_df, aes(x = Time, y = Value, color = Type)) +
+  geom_line(size = 1) +  # Line for historical and forecast data
+  geom_ribbon(data = subset(forecast_df, Type == "Forecast"),
+              aes(ymin = Lower95, ymax = Upper95), fill = "lightblue", alpha = 0.4) +  # 95% CI
+  labs(title = "Time Series with 1-Year Forecast",
+       x = "Time",
+       y = "Housing Price (Original Scale)",
+       color = "Data Type") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  scale_x_continuous(breaks = seq(floor(min(forecast_df$Time)), ceiling(max(forecast_df$Time)), by = 1)) +
+  scale_color_manual(values = c("Historical" = "black", "Forecast" = "blue"))
+
+```
 
