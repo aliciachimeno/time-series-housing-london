@@ -1,10 +1,9 @@
 ---
 title: "London housing price forecast"
-author: "Alícia Chimeno and Silvia Ferrer
-output: html_document
+author: "Alícia Chimeno and Silvia Ferrer"
+output: "html_document"
 date: "2024-12-15"
 ---
-
 ## Data 
 
 ```{r setup, include=FALSE}
@@ -252,8 +251,8 @@ accuracy(forecast_values3, test_data)
 ### d) Select the best model for forecasting. 
 
 ```{r}
-model2 <- arima(lnserie, order = c(1, 1, 1), seasonal = list(order = c(1, 0, 1), period = 12))
-best_model<-model2
+model3 <- arima(lnserie, order = c(2, 2, 1), seasonal = list(order = c(1, 0, 1), period = 12))
+best_model<-model3
 ```
 
 
@@ -270,6 +269,7 @@ print(forecast_results)
 ```
 
 ```{r}
+# Subset the last 5 years (80% window) of historical data
 historical_data <- window(lnserie, start = time(lnserie)[length(time(lnserie)) - (5 * 12) + 1])
 
 # Apply the exponential transformation to revert to the original scale
@@ -277,15 +277,23 @@ forecast_df <- data.frame(
   Time = c(time(historical_data), time(forecast_results$mean)),
   Value = c(exp(as.numeric(historical_data)), exp(as.numeric(forecast_results$mean))),
   Type = c(rep("Historical", length(historical_data)), rep("Forecast", length(forecast_results$mean))),
-  Lower95 = c(rep(NA, length(historical_data)), exp(as.numeric(forecast_results$lower[, 2]))),
-  Upper95 = c(rep(NA, length(historical_data)), exp(as.numeric(forecast_results$upper[, 2])))
+  Lower80 = c(rep(NA, length(historical_data)), exp(as.numeric(forecast_results$lower[, 1]))),  # 80% CI lower
+  Upper80 = c(rep(NA, length(historical_data)), exp(as.numeric(forecast_results$upper[, 1]))),  # 80% CI upper
+  Lower95 = c(rep(NA, length(historical_data)), exp(as.numeric(forecast_results$lower[, 2]))),  # 95% CI lower
+  Upper95 = c(rep(NA, length(historical_data)), exp(as.numeric(forecast_results$upper[, 2])))   # 95% CI upper
 )
+
+library(ggplot2)
 
 ggplot(forecast_df, aes(x = Time, y = Value, color = Type)) +
   geom_line(size = 1) +  # Line for historical and forecast data
-  geom_ribbon(data = subset(forecast_df, Type == "Forecast"),
-              aes(ymin = Lower95, ymax = Upper95), fill = "lightblue", alpha = 0.4) +  # 95% CI
-  labs(title = "Time Series with 1-Year Forecast",
+  # 80% confidence interval ribbon
+  geom_ribbon(data = subset(forecast_df, Type == "Forecast"), 
+              aes(ymin = Lower80, ymax = Upper80), fill = "lightgreen", alpha = 0.3) +
+  # 95% confidence interval ribbon
+  geom_ribbon(data = subset(forecast_df, Type == "Forecast"), 
+              aes(ymin = Lower95, ymax = Upper95), fill = "lightblue", alpha = 0.4) +
+  labs(title = "Time Series with 1-Year Forecast and Confidence Intervals",
        x = "Time",
        y = "Housing Price (Original Scale)",
        color = "Data Type") +
@@ -293,6 +301,7 @@ ggplot(forecast_df, aes(x = Time, y = Value, color = Type)) +
   theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
   scale_x_continuous(breaks = seq(floor(min(forecast_df$Time)), ceiling(max(forecast_df$Time)), by = 1)) +
   scale_color_manual(values = c("Historical" = "black", "Forecast" = "blue"))
+
 
 ```
 
